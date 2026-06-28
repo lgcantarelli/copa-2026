@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Copa do Mundo 2026 — Chaveamento do mata-mata</title>
+<style>
+  :root {
+    --line-dim: #1c4d33;
+    --gold: #e8c468;
+    --text: #eafbf1;
+    --muted: #8fc7a6;
+    --accent: #1db954;
+    --conn: #2f7d52;
+  }
+  * { box-sizing: border-box; }
+  html { background: #07160d; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1400px 700px at 50% -10%, #14442b 0%, transparent 60%),
+      linear-gradient(160deg, #0a1f14 0%, #07160d 100%);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 26px 16px 22px;
+  }
+  header { text-align: center; margin-bottom: 14px; }
+  .kicker { letter-spacing: .32em; font-size: 11px; color: var(--gold); text-transform: uppercase; font-weight: 700; }
+  h1 { margin: 6px 0 2px; font-size: clamp(20px, 4vw, 34px); font-weight: 800; letter-spacing: -.5px; }
+  .sub { color: var(--muted); font-size: 12.5px; }
+
+  .scroll { overflow-x: auto; padding-bottom: 16px; -webkit-overflow-scrolling: touch; }
+  .stage {
+    position: relative;
+    width: 1696px;
+    height: 620px;
+    margin: 0 auto;
+  }
+  /* When the viewport is narrower than the bracket, stop auto-centering (which
+     clips the left half unreachably) and left-align so overflow-x can scroll the
+     full width from the true left edge. */
+  @media (max-width: 1728px) {
+    .stage { margin: 0; }
+  }
+  svg.wires { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+  .col-label {
+    position: absolute; top: 0; transform: translateX(-50%);
+    font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--gold); font-weight: 700; white-space: nowrap;
+  }
+
+  .match {
+    position: absolute;
+    background: linear-gradient(180deg, #103021, #0c2418);
+    border: 1px solid var(--line-dim);
+    border-radius: 8px;
+    padding: 4px 6px 5px;
+    z-index: 1;
+  }
+  .match.tbd { background: #16382455; border-style: dashed; }
+  .match::before {
+    content: attr(data-m);
+    position: absolute; top: -7px; left: 7px;
+    background: var(--accent); color: #042b16;
+    font-size: 8px; font-weight: 800; padding: 0 5px; border-radius: 5px;
+  }
+  .match.tbd::before { background: var(--conn); color: #eafbf1; }
+  .match.final { border-color: var(--gold); box-shadow: 0 0 22px rgba(232,196,104,.28); }
+  .team { display: flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 5px; }
+  .team + .team { margin-top: 1px; border-top: 1px dashed var(--line-dim); }
+  /* clickable filled slots */
+  .team.pick { cursor: pointer; transition: background .12s, transform .06s; }
+  .team.pick:hover { background: rgba(46,125,82,.28); }
+  .team.pick:active { transform: scale(.98); }
+  .team.won { background: rgba(232,196,104,.16); box-shadow: inset 0 0 0 1px rgba(232,196,104,.45); }
+  .team.won .name { color: var(--gold); }
+  /* empty placeholder slot (awaiting a pick upstream) */
+  .team.empty { color: var(--muted); }
+  .flag { font-size: 15px; line-height: 1; width: 19px; text-align: center; flex: none; }
+  .name { font-size: 11px; font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .name.dim { color: var(--muted); font-weight: 500; font-style: italic; }
+  .seed { font-size: 7.5px; color: var(--muted); font-weight: 700; background: #0a1f14; border: 1px solid var(--line-dim); padding: 0 3px; border-radius: 4px; flex: none; }
+  .seed.third { color: var(--gold); border-color: #5a4a1f; }
+  .reset-btn {
+    cursor: pointer; background: #0c2418; border: 1px solid var(--line-dim); color: var(--muted);
+    font-size: 11px; font-weight: 700; padding: 5px 14px; border-radius: 20px; transition: background .12s, color .12s;
+  }
+  .reset-btn:hover { background: #14442b; color: var(--text); }
+  .champ-banner { color: var(--gold); font-weight: 800; font-size: 13px; letter-spacing: .04em; min-height: 16px; }
+
+  .trophy { position: absolute; font-size: 38px; text-align: center; z-index: 1; }
+  .champ-label { position: absolute; font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); font-weight: 700; text-align: center; z-index: 1; }
+
+  .foot {
+    max-width: 1100px; margin: 8px auto 0; padding: 18px 20px 4px;
+    border-top: 1px solid var(--line-dim);
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; font-size: 11px; color: var(--muted); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; background: #0c2418; border: 1px solid var(--line-dim); padding: 4px 10px; border-radius: 20px; }
+  .note { color: var(--muted); font-size: 11.5px; max-width: 920px; margin: 0; line-height: 1.55; text-align: center; opacity: .85; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="kicker">Canadá · México · EUA</div>
+  <h1>Copa do Mundo 2026 — Mata-mata</h1>
+  <div class="sub">Fase de grupos encerrada · 16-avos definidos · do mata-mata à final, lendo da esquerda para a direita</div>
+</header>
+
+<div class="scroll">
+  <div class="stage" id="stage">
+    <svg class="wires" id="wires" viewBox="0 0 1696 620" preserveAspectRatio="none"></svg>
+
+    <div class="col-label" style="left:88px;">16-avos</div>
+    <div class="col-label" style="left:278px;">Oitavas</div>
+    <div class="col-label" style="left:468px;">Quartas</div>
+    <div class="col-label" style="left:658px;">Semi</div>
+    <div class="col-label" style="left:848px;">Final</div>
+    <div class="col-label" style="left:1038px;">Semi</div>
+    <div class="col-label" style="left:1228px;">Quartas</div>
+    <div class="col-label" style="left:1418px;">Oitavas</div>
+    <div class="col-label" style="left:1608px;">16-avos</div>
+  </div>
+</div>
+
+<footer class="foot">
+  <div class="champ-banner" id="champ"></div>
+  <div class="legend">
+    <span class="pill"><span class="seed">1ºA</span> vencedor de grupo</span>
+    <span class="pill"><span class="seed">2ºA</span> vice</span>
+    <span class="pill"><span class="seed third">3ºX</span> melhor terceiro</span>
+    <span class="pill">⚽ a definir</span>
+    <button class="reset-btn" id="reset">↺ Reiniciar</button>
+  </div>
+  <p class="note">
+    <b>Clique na célula de um time</b> para escolher quem vence aquele confronto: ele avança para a próxima fase.
+    A partir das oitavas tudo começa vazio e vai sendo preenchido pelos seus cliques até definir o campeão.
+    <b>Clicar de novo no time já escolhido o remove</b> daquela fase e das seguintes; trocar de palpite também limpa o caminho à frente.
+  </p>
+</footer>
+
+<script>
+(function () {
+  var MW = 176, H = 48;             // card width, card height
+  var P = 190;                      // pitch between rounds
+  // CENTER is offset so the leftmost lane (CENTER - 4*P - MW/2) lands at x=0,
+  // and W spans exactly to the rightmost card edge — no negative/overflowing
+  // coordinates that would get clipped on narrow (mobile) viewports.
+  var CENTER = 4 * P + MW / 2;      // = 848
+  var W = 2 * CENTER;               // = 1696, full content span
+  function laneLeft(n){ return CENTER + n*P - MW/2; } // n: -4..+4
+
+  // ---- Fixed round-of-32 teams. team = {f:flag, n:name, s:seed, third:bool}
+  function T(f,n,s,third){ return {f:f,n:n,s:s,third:!!third}; }
+  var R32TEAMS = {
+    73:[T('🇿🇦','África do Sul','2ºA'), T('🇨🇦','Canadá','2ºB')],
+    74:[T('🇩🇪','Alemanha','1ºE'),     T('🇵🇾','Paraguai','3ºD',1)],
+    75:[T('🇳🇱','Holanda','1ºF'),      T('🇲🇦','Marrocos','2ºC')],
+    76:[T('🇧🇷','Brasil','1ºC'),       T('🇯🇵','Japão','2ºF')],
+    77:[T('🇫🇷','França','1ºI'),       T('🇸🇪','Suécia','3ºF',1)],
+    78:[T('🇨🇮','Costa do Marfim','2ºE'), T('🇳🇴','Noruega','2ºI')],
+    79:[T('🇲🇽','México','1ºA'),       T('🇪🇨','Equador','3ºE',1)],
+    80:[T('🏴󠁧󠁢󠁥󠁮󠁧󠁿','Inglaterra','1ºL'), T('🇨🇩','RD Congo','3ºK',1)],
+    81:[T('🇺🇸','EUA','1ºD'),          T('🇧🇦','Bósnia','3ºB',1)],
+    82:[T('🇧🇪','Bélgica','1ºG'),      T('🇸🇳','Senegal','3ºI',1)],
+    83:[T('🇵🇹','Portugal','2ºK'),     T('🇭🇷','Croácia','2ºL')],
+    84:[T('🇪🇸','Espanha','1ºH'),      T('🇦🇹','Áustria','2ºJ')],
+    85:[T('🇨🇭','Suíça','1ºB'),        T('🇩🇿','Argélia','3ºJ',1)],
+    86:[T('🇦🇷','Argentina','1ºJ'),    T('🇨🇻','Cabo Verde','2ºH')],
+    87:[T('🇨🇴','Colômbia','1ºK'),     T('🇬🇭','Gana','3ºL',1)],
+    88:[T('🇦🇺','Austrália','2ºD'),    T('🇪🇬','Egito','2ºG')]
+  };
+
+  // ---- RESULTADOS OFICIAIS (edite aqui conforme os jogos acontecem) ---------
+  // Para cravar o vencedor de QUALQUER jogo (16-avos à final), adicione uma
+  // linha:  <nº do jogo>: '<seed do vencedor>'  ── ex.: 76: '1ºC' (Brasil vence).
+  // O seed é o rótulo que aparece na célula do time (1ºC, 2ºH, 3ºD...). Funciona
+  // em todas as fases: nas derivadas use o seed do time que venceu o confronto.
+  // Comente/remova a linha para voltar o jogo a "em aberto". Cliques no bracket
+  // continuam funcionando por cima destes resultados.
+  var RESULTS = {
+    // ----- 16-avos (28/jun – 03/jul) -----
+    // 73: '2ºA',  74: '1ºE',  75: '1ºF',  76: '1ºC',
+    // 77: '1ºI',  78: '2ºI',  79: '1ºA',  80: '1ºL',
+    // 81: '1ºD',  82: '1ºG',  83: '2ºK',  84: '1ºH',
+    // 85: '1ºB',  86: '1ºJ',  87: '1ºK',  88: '2ºD',
+    // ----- Oitavas (M89..M96) / Quartas (97..100) / Semis (101,102) / Final (104) -----
+    // 104: '1ºC',
+  };
+
+  // applyResults(): semeia o estado `winner` a partir de RESULTS, na ordem das
+  // rodadas, para que os times avancem corretamente já no carregamento.
+  function applyResults(){
+    // ordem por nº garante que feeders sejam resolvidos antes dos derivados
+    Object.keys(RESULTS).map(Number).sort(function(a,b){return a-b;}).forEach(function(m){
+      var seed = RESULTS[m];
+      var ta = teamOf(m,'a'), tb = teamOf(m,'b');
+      var slot = (ta && ta.s===seed) ? 'a' : (tb && tb.s===seed) ? 'b' : null;
+      if (!slot){
+        console.warn('RESULTS: jogo M'+m+' — seed "'+seed+'" não bate com nenhum dos times (ainda indefinidos ou seed errado).');
+        return;
+      }
+      winner[m] = {slot:slot, team:teamOf(m,slot)};
+    });
+    cleanup();
+  }
+
+  // ---- Bracket tree. Each match knows its two feeder matches (srcA/srcB).
+  // R32 (73-88) are leaves with fixed teams. Official feeder structure:
+  var FEED = {
+    89:[74,77], 90:[73,75], 91:[76,78], 92:[79,80],
+    93:[83,84], 94:[81,82], 95:[86,88], 96:[85,87],
+    97:[89,90], 98:[93,94], 99:[91,92], 100:[95,96],
+    101:[97,98], 102:[99,100], 104:[101,102]
+  };
+  var ALL = [73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,
+             89,90,91,92,93,94,95,96,97,98,99,100,101,102,104];
+
+  // ---- State: per match, the chosen winning SLOT and the TEAM identity that
+  // occupied it when chosen. Tracking the team (not just the slot) lets us
+  // invalidate a pick when an upstream change swaps which team sits in that slot.
+  var winner = {}; // matchNum -> {slot:'a'|'b', team:<teamObj>}  (absent = undecided)
+
+  // teamOf(m, slot): resolve the team object in slot 'a'/'b' of match m, or null.
+  function teamOf(m, slot){
+    if (R32TEAMS[m]) return R32TEAMS[m][slot==='a'?0:1];
+    var feeder = FEED[m][slot==='a'?0:1];
+    return teamWinner(feeder); // winner of the feeder match flows into this slot
+  }
+  // teamWinner(m): the chosen winning team object of match m, or null if undecided.
+  function teamWinner(m){
+    var w = winner[m];
+    return w ? w.team : null;
+  }
+  // wonSlot(m): which slot won, or null.
+  function wonSlot(m){ return winner[m] ? winner[m].slot : null; }
+
+  // Cascade-clean: drop any pick whose stored team no longer matches the team
+  // currently resolving into its chosen slot (upstream result changed).
+  function cleanup(){
+    var changed = true;
+    while (changed){
+      changed = false;
+      ALL.forEach(function(m){
+        var w = winner[m]; if (!w) return;
+        if (teamOf(m, w.slot) !== w.team){ delete winner[m]; changed = true; }
+      });
+    }
+  }
+
+  function pick(m, slot){
+    var team = teamOf(m, slot);
+    if (team == null) return;                 // empty slot, ignore
+    if (wonSlot(m) === slot){
+      delete winner[m];                       // re-click the winner -> deselect it
+    } else {
+      winner[m] = {slot:slot, team:team};     // pick this slot as the winner
+    }
+    cleanup();                                // cascade: clears downstream that depended on it
+    render();
+  }
+
+  // ---- Geometry: assign an (x,y center) to every match.
+  var pos = {}; // matchNum -> {x, yc}
+  var top0 = 40, vgap = 26;                   // R32 top offset, gap between R32 cards
+  var pitch32 = H + vgap;                     // vertical pitch of R32 cards
+  // Left half R32 order (top->bottom): 74,77,73,75, 83,84,81,82
+  // Right half R32 order:              76,78,79,80, 86,88,85,87
+  var leftOrder  = [74,77,73,75, 83,84,81,82];
+  var rightOrder = [76,78,79,80, 86,88,85,87];
+  leftOrder.forEach(function(m,i){  pos[m] = {x:laneLeft(-4), yc: top0 + i*pitch32 + H/2}; });
+  rightOrder.forEach(function(m,i){ pos[m] = {x:laneLeft(4),  yc: top0 + i*pitch32 + H/2}; });
+  // Derived rounds: center = midpoint of its two feeders. x by lane.
+  function place(m, lane){ var f=FEED[m]; pos[m]={x:laneLeft(lane), yc:(pos[f[0]].yc+pos[f[1]].yc)/2}; }
+  // left R16, QF, SF
+  [89,90,93,94].forEach(function(m){ place(m,-3); });
+  [97,98].forEach(function(m){ place(m,-2); });
+  place(101,-1);
+  // right R16, QF, SF
+  [91,92,95,96].forEach(function(m){ place(m,3); });
+  [99,100].forEach(function(m){ place(m,2); });
+  place(102,1);
+  // final
+  place(104,0);
+
+  // ---- DOM build (once) + wires (once).
+  var stage = document.getElementById('stage');
+  var svg = document.getElementById('wires');
+  var cards = {}; // matchNum -> element
+
+  function buildCard(m){
+    var d = document.createElement('div');
+    var isFinal = (m===104), isLeaf = !!R32TEAMS[m];
+    d.className = 'match' + (isFinal?' final':'');
+    d.style.left = pos[m].x + 'px';
+    d.style.top  = (pos[m].yc - H/2) + 'px';
+    d.style.width = MW + 'px';
+    d.setAttribute('data-m', 'M'+m);
+    ['a','b'].forEach(function(slot){
+      var row = document.createElement('div');
+      row.className = 'team';
+      row.setAttribute('data-slot', slot);
+      row.addEventListener('click', function(){ pick(m, slot); });
+      d.appendChild(row);
+    });
+    stage.appendChild(d);
+    cards[m] = d;
+  }
+  ALL.forEach(buildCard);
+
+  function wire(x1,y1,x2,y2){
+    var midx=(x1+x2)/2;
+    var path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d','M '+x1+' '+y1+' H '+midx+' V '+y2+' H '+x2);
+    path.setAttribute('fill','none'); path.setAttribute('stroke','var(--conn)');
+    path.setAttribute('stroke-width','1.5'); path.setAttribute('opacity','0.6');
+    svg.appendChild(path);
+  }
+  // Draw a wire from each feeder's outgoing edge to the match's incoming edge.
+  Object.keys(FEED).forEach(function(mk){
+    var m=+mk, f=FEED[m];
+    var left = pos[m].x < CENTER || m===104 && false; // determine side by feeder x
+    f.forEach(function(src){
+      var srcRightOfChild = pos[src].x > pos[m].x;
+      // outgoing edge of src faces the child; incoming edge of child faces src.
+      var x1 = srcRightOfChild ? pos[src].x : pos[src].x + MW;
+      var x2 = srcRightOfChild ? pos[m].x + MW : pos[m].x;
+      wire(x1, pos[src].yc, x2, pos[m].yc);
+    });
+  });
+
+  // trophy + final label (static, centered on final)
+  var pf = pos[104];
+  var tr=document.createElement('div'); tr.className='trophy';
+  tr.style.left=(pf.x+MW/2-22)+'px'; tr.style.top=(pf.yc-H/2-66)+'px'; tr.textContent='🏆';
+  stage.appendChild(tr);
+  var lb=document.createElement('div'); lb.className='champ-label';
+  lb.style.left=(pf.x+MW/2-70)+'px'; lb.style.top=(pf.yc+H/2+10)+'px'; lb.style.width='140px';
+  lb.textContent='Final · 19/jul · NJ'; stage.appendChild(lb);
+
+  // ---- Render: paint every slot from current state.
+  var champEl = document.getElementById('champ');
+  function rowHTML(team, slot, won){
+    if (!team){
+      return '<span class="flag">⚽</span><span class="name dim">a definir</span>';
+    }
+    var seed = team.s ? '<span class="seed'+(team.third?' third':'')+'">'+team.s+'</span>' : '';
+    return '<span class="flag">'+team.f+'</span><span class="name">'+team.n+'</span>'+seed;
+  }
+  function render(){
+    ALL.forEach(function(m){
+      var card = cards[m];
+      var isLeaf = !!R32TEAMS[m];
+      // a match is "active" (clickable) only when BOTH its slots have teams
+      var ta = teamOf(m,'a'), tb = teamOf(m,'b');
+      var bothReady = ta && tb;
+      card.classList.toggle('tbd', !(isLeaf || bothReady));
+      ['a','b'].forEach(function(slot){
+        var row = card.querySelector('.team[data-slot="'+slot+'"]');
+        var team = (slot==='a')?ta:tb;
+        var won = (wonSlot(m)===slot) && team;
+        row.innerHTML = rowHTML(team, slot, won);
+        row.classList.toggle('empty', !team);
+        // clickable only if both teams present (you pick the winner of a real matchup)
+        row.classList.toggle('pick', !!(team && bothReady));
+        row.classList.toggle('won', !!won);
+      });
+    });
+    // champion banner
+    var champ = teamWinner(104);
+    champEl.textContent = champ ? ('🏆 Campeão: '+champ.f+' '+champ.n) : '';
+  }
+
+  document.getElementById('reset').addEventListener('click', function(){
+    winner = {}; applyResults(); render();   // volta aos resultados oficiais
+  });
+
+  applyResults();   // semeia os vencedores cravados em RESULTS
+  render();
+})();
+</script>
+</body>
+</html>
