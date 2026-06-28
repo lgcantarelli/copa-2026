@@ -15,6 +15,9 @@ Uso:
   python3 scripts/set_winner.py --clear 76          # tira só o M76
   python3 scripts/set_winner.py --clear-all         # zera tudo
 
+  # dry-run: mostrar o que mudaria (vs. RESULTS atual) SEM gravar:
+  python3 scripts/set_winner.py --diff 76=Brasil 86=Argentina
+
   # ver o estado atual sem escrever:
   python3 scripts/set_winner.py --list
 
@@ -198,26 +201,24 @@ def main():
     ap.add_argument("--clear", type=int, metavar="JOGO", help="remove o vencedor de um jogo")
     ap.add_argument("--clear-all", action="store_true", help="zera todos os vencedores")
     ap.add_argument("--list", action="store_true", help="mostra os vencedores atuais e sai")
+    ap.add_argument("--diff", action="store_true",
+                    help="dry-run: mostra o que mudaria (vs. RESULTS atual) e NÃO grava")
     ap.add_argument("--deploy", action="store_true", help="commit + push após gravar")
     args = ap.parse_args()
 
     src = read_html()
     r32 = parse_r32(src)
     teams_of, _ = build_resolver(r32)
-    results = parse_results(src)
+    current = parse_results(src)
 
     if args.list:
-        cmd_list(r32, teams_of, results)
+        cmd_list(r32, teams_of, current)
         return
 
-    changed = False
-    if args.clear_all:
-        if results:
-            results = {}
-            changed = True
+    # Constrói o estado-alvo a partir do atual + clears + picks.
+    results = {} if args.clear_all else dict(current)
     if args.clear is not None:
-        if results.pop(args.clear, None) is not None:
-            changed = True
+        results.pop(args.clear, None)
 
     for pick in args.picks:
         if "=" not in pick:
@@ -229,21 +230,48 @@ def main():
         if match not in ALL_MATCHES:
             sys.exit(f"ERRO: jogo M{match} não existe (válidos: 73–88, 89–102, 104).")
         seed = resolve_seed(match, token, teams_of, results)
-        if results.get(match) != seed:
-            results[match] = seed
-            changed = True
+        results[match] = seed
 
-    if changed:
-        body = render_results_block(results, r32, teams_of)
-        write_results(src, body)
-        print("index.html atualizado.")
-    else:
-        print("Nada mudou (já estava assim).")
+    diff = compute_diff(current, results, teams_of)
+    print_diff(diff)
 
-    cmd_list(r32, teams_of, results)
+    if args.diff:
+        return  # dry-run: nunca grava
+
+    if not diff:
+        return
+
+    body = render_results_block(results, r32, teams_of)
+    write_results(src, body)
+    print("\nindex.html atualizado.")
 
     if args.deploy:
         deploy()
+
+
+def compute_diff(current, target, teams_of):
+    """Lista (match, antes, depois) para cada jogo que mudaria. Vazio = nada muda."""
+    def label(match, results, seed):
+        if seed is None:
+            return "—"
+        name = next((n for s, n in teams_of(match, results) if s == seed), "?")
+        return f"{name} ({seed})"
+
+    out = []
+    for m in sorted(set(current) | set(target)):
+        before, after = current.get(m), target.get(m)
+        if before != after:
+            out.append((m, label(m, current, before), label(m, target, after)))
+    return out
+
+
+def print_diff(diff):
+    if not diff:
+        print("Sem mudanças: o RESULTS já está em dia com o que foi informado.")
+        return
+    print("Mudanças a aplicar:")
+    for m, before, after in diff:
+        print(f"  M{m}: {before}  ->  {after}")
 
 
 if __name__ == "__main__":
